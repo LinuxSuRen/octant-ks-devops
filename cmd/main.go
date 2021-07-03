@@ -2,80 +2,37 @@ package main
 
 import (
 	"fmt"
+	"github.com/linuxsuren/octant-ks-devops/pkg"
+	"github.com/linuxsuren/octant-ks-devops/pkg/pipeline"
 	"github.com/pkg/errors"
 	"github.com/vmware-tanzu/octant/pkg/action"
 	"github.com/vmware-tanzu/octant/pkg/navigation"
 	"github.com/vmware-tanzu/octant/pkg/plugin"
 	"github.com/vmware-tanzu/octant/pkg/plugin/service"
-	"github.com/vmware-tanzu/octant/pkg/store"
 	"github.com/vmware-tanzu/octant/pkg/view/component"
 	"github.com/vmware-tanzu/octant/pkg/view/flexlayout"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"log"
 )
 
-const pluginName = "ks-devops"
-const pluginActionName = "action.kubesphere.io/devops"
-
-type pluginContext struct {
-	Namespace string
-}
-
 type Handlers struct {
-	Context *pluginContext
+	Context *pkg.PluginContext
 }
 
 func (h *Handlers) actions(request *service.ActionRequest) error {
 	switch request.ActionName {
 	case action.RequestSetNamespace:
 		h.Context.Namespace, _ = request.Payload.String("namespace")
-		log.Println("===", h.Context.Namespace)
+	case pkg.ActionSetName:
+		h.Context.Namespace, _ = request.Payload.String("name")
 	}
 	return nil
 }
 
 func (h *Handlers) InitRoutes(router *service.Router) {
-	gen := func(name, accessor string, request service.Request) component.Component {
-		table := component.NewTable("pipeline", "xx", []component.TableCol{{
-			Name: "name",
-		}, {
-			Name: "status",
-		}})
-
-		if nss, err := request.DashboardClient().List(request.Context(), store.Key{
-			Namespace:  h.Context.Namespace,
-			Kind:       "pipeline",
-			APIVersion: "devops.kubesphere.io/v1alpha3",
-		}); err == nil {
-			for i := range nss.Items {
-				ns := nss.Items[i].GetName()
-				row := component.TableRow{}
-				row["name"] = component.NewText(ns)
-				row["status"] = component.NewText(h.Context.Namespace)
-				table.Add(row)
-			}
-		}
-
-		card_1 := component.NewCard(component.TitleFromString("table"))
-		card_1.SetBody(table)
-
-		// fetch pipeline objects
-
-		cardList := component.NewCardList(name)
-		cardList.AddCard(*card_1)
-		cardList.SetAccessor(accessor)
-		return cardList
-	}
-
-	router.HandleFunc("*", func(request service.Request) (response component.ContentResponse, e error) {
-		com1 := gen("tab 1", "tab1", request)
-
-		var title = component.TitleFromString("sss")
-
-		contentResponse := component.NewContentResponse(title)
-		contentResponse.Add(com1)
-		return *contentResponse, nil
-	})
+	pipelineHandler := pipeline.PipelineHandler{Context: h.Context}
+	router.HandleFunc("/overview", pipelineHandler.OverviewHandler)
+	router.HandleFunc(fmt.Sprintf("/namespace/*/pipeline/*", ), pipelineHandler.DetailHandler)
 }
 
 func main() {
@@ -89,12 +46,12 @@ func main() {
 		SupportsPrinterConfig: []schema.GroupVersionKind{devopsGVK},
 		SupportsPrinterStatus: []schema.GroupVersionKind{devopsGVK},
 		SupportsTab:           []schema.GroupVersionKind{devopsGVK},
-		ActionNames:           []string{pluginActionName, action.RequestSetNamespace},
+		ActionNames:           []string{pkg.PluginActionName, action.RequestSetNamespace},
 		IsModule:              true,
 	}
 
 	handlers := &Handlers{
-		Context: &pluginContext{},
+		Context: &pkg.PluginContext{},
 	}
 	options := []service.PluginOption{
 		service.WithPrinter(handlePrint),
@@ -103,7 +60,7 @@ func main() {
 		service.WithActionHandler(handlers.actions),
 	}
 
-	if p, err := service.Register(pluginName, "ks devops demo plugin",
+	if p, err := service.Register(pkg.PluginName, "Get more from http://github.com/linuxsuren/octant-ks-devops",
 		capabilities, options...); err != nil {
 		log.Fatal(err)
 	} else {
@@ -114,8 +71,20 @@ func main() {
 func handleNavigation(request *service.NavigationRequest) (x navigation.Navigation, e error) {
 	return navigation.Navigation{
 		Title:    "ks-devops",
-		Path:     request.GeneratePath(),
+		Path:     pkg.PluginName + "/overview",
 		IconName: "cloud",
+		Children:  []navigation.Navigation{{
+			Title: "Pipeline",
+			Path:  pkg.PluginName + "/overview",
+		}, {
+			Title: "S2I",
+			Path:  pkg.PluginName + "/s2i",
+			IconName: "s2i",
+		}, {
+			Title: "Jenkins",
+			Path:  pkg.PluginName + "/jenkins",
+			IconName: "jenkins",
+		}},
 	}, nil
 }
 
@@ -125,19 +94,6 @@ func handlePrint(request *service.PrintRequest) (response plugin.PrintResponse, 
 	}
 
 	card := component.NewCard(component.TitleFromString("hello"))
-
-	key, err := store.KeyFromObject(request.Object)
-	fmt.Println("key", key)
-	if err != nil {
-		return plugin.PrintResponse{}, err
-	}
-
-	u, err := request.DashboardClient.Get(request.Context(), key)
-	if err != nil {
-		return plugin.PrintResponse{}, err
-	}
-	fmt.Println("===", u.GetName())
-
 	return plugin.PrintResponse{
 		Config: []component.SummarySection{
 			{Header: "from-plugin", Content: component.NewText("hello ks-devops")},

@@ -2,4 +2,7 @@ build:
 	go build -o bin/octant-ks-devops cmd/main.go
 
 copy: build
-	cp bin/octant-ks-devops /Users/rick/.config/octant/plugins
+	mkdir -p ~/.config/octant/plugins && cp bin/octant-ks-devops ~/.config/octant/plugins
+
+run: copy
+	octant --disable-open-browser
