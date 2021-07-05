@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/linuxsuren/octant-ks-devops/pkg"
+	"github.com/linuxsuren/octant-ks-devops/pkg/config"
 	"github.com/linuxsuren/octant-ks-devops/pkg/pipeline"
 	"github.com/pkg/errors"
 	"github.com/vmware-tanzu/octant/pkg/action"
@@ -33,6 +34,11 @@ func (h *Handlers) InitRoutes(router *service.Router) {
 	pipelineHandler := pipeline.PipelineHandler{Context: h.Context}
 	router.HandleFunc("/overview", pipelineHandler.OverviewHandler)
 	router.HandleFunc(fmt.Sprintf("/namespace/*/pipeline/*", ), pipelineHandler.DetailHandler)
+
+	configHandler := config.ConfigHandler{
+		Context: h.Context,
+	}
+	router.HandleFunc("/config", configHandler.Dashboard)
 }
 
 func main() {
@@ -41,11 +47,15 @@ func main() {
 		Version: "v1alpha3",
 		Kind:    "pipeline",
 	}
+	cmGVK := schema.GroupVersionKind{
+		Version: "v1",
+		Kind:    "ConfigMap",
+	}
 
 	capabilities := &plugin.Capabilities{
-		SupportsPrinterConfig: []schema.GroupVersionKind{devopsGVK},
-		SupportsPrinterStatus: []schema.GroupVersionKind{devopsGVK},
-		SupportsTab:           []schema.GroupVersionKind{devopsGVK},
+		SupportsPrinterConfig: []schema.GroupVersionKind{devopsGVK, cmGVK},
+		SupportsPrinterStatus: []schema.GroupVersionKind{devopsGVK, cmGVK},
+		SupportsTab:           []schema.GroupVersionKind{devopsGVK, cmGVK},
 		ActionNames:           []string{pkg.PluginActionName, action.RequestSetNamespace},
 		IsModule:              true,
 	}
@@ -74,6 +84,9 @@ func handleNavigation(request *service.NavigationRequest) (x navigation.Navigati
 		Path:     pkg.PluginName + "/overview",
 		IconName: "cloud",
 		Children:  []navigation.Navigation{{
+			Title: "Config",
+			Path:  pkg.PluginName + "/config",
+		}, {
 			Title: "Pipeline",
 			Path:  pkg.PluginName + "/overview",
 		}, {
