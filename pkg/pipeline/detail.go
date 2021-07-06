@@ -2,8 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"log"
-
 	//"github.com/ghodss/yaml"
 	"github.com/linuxsuren/octant-ks-devops/pkg/path"
 	"github.com/vmware-tanzu/octant/pkg/plugin/service"
@@ -27,11 +25,12 @@ func (h *PipelineHandler) pipelineDetails(request service.Request) (components [
 
 	components = make([]component.Component, 0)
 	if pipeline, err := h.getPipeline(request.DashboardClient(), request.Context()); err == nil {
-		components = append(components, createPipelineEditor(pipeline), createSummary(pipeline))
+		components = append(components, createSummary(pipeline),
+			createPipelineEditor(pipeline),
+			createRawYAML(pipeline))
 	} else {
 		components = append(components, component.NewText("Cannot found Pipeline" + err.Error()))
 	}
-	log.Println("compoents size", len(components))
 	return
 }
 
@@ -45,6 +44,7 @@ func (h *PipelineHandler) getPipeline(client service.Dashboard, ctx context.Cont
 	}); err == nil {
 		var rawData []byte
 		if rawData, err = data.MarshalJSON(); err == nil {
+			pipeline = &Pipeline{}
 			err = yaml.Unmarshal(rawData, pipeline)
 		}
 	}
@@ -52,10 +52,16 @@ func (h *PipelineHandler) getPipeline(client service.Dashboard, ctx context.Cont
 }
 
 func createSummary(pipeline *Pipeline) (com component.Component) {
-	com = component.NewSummary("Summary", component.SummarySection{
+	summary := component.NewSummary("Summary", component.SummarySection{
 		Header: "Type",
 		Content: component.NewText(pipeline.Spec.Type),
 	})
+	if pipeline.Spec.Pipeline != nil {
+		for _, param := range pipeline.Spec.Pipeline.Parameters {
+			summary.AddSection(param.Name, component.NewText(param.Type))
+		}
+	}
+	com = summary
 	return
 }
 
@@ -64,6 +70,14 @@ func createPipelineEditor(pipeline *Pipeline) (com component.Component) {
 		pipeline.Spec.Pipeline.Jenkinsfile, true)
 	editor.Config.Language = "groovy"
 	editor.SetAccessor("groovy")
+	com = editor
+	return
+}
+
+func createRawYAML(pipeline *Pipeline) (com component.Component) {
+	editor := component.NewEditor(component.TitleFromString("YAML"), "", true)
+	pipeline.SetManagedFields(nil)
+	_ = editor.SetValueFromObject(pipeline)
 	com = editor
 	return
 }

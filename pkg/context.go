@@ -6,7 +6,8 @@ const (
 )
 
 const (
-	ActionSetName = "action.kubesphere.io/setName"
+	ActionSetName        = "action.kubesphere.io/setName"
+	ActionCreatePipeline = "action.kubesphere.io/create-pipeline"
 )
 
 // PluginContext is the context of this plugin
