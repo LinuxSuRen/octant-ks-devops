@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/linuxsuren/octant-ks-devops/pkg"
 	"github.com/linuxsuren/octant-ks-devops/pkg/config"
+	"github.com/linuxsuren/octant-ks-devops/pkg/jenkins"
 	"github.com/linuxsuren/octant-ks-devops/pkg/pipeline"
 	"github.com/pkg/errors"
 	"github.com/vmware-tanzu/octant/pkg/action"
@@ -39,6 +40,11 @@ func (h *Handlers) InitRoutes(router *service.Router) {
 		Context: h.Context,
 	}
 	router.HandleFunc("/config", configHandler.Dashboard)
+
+	jenkinsHandler := jenkins.JenkinsHandler{
+		Context: h.Context,
+	}
+	router.HandleFunc("/jenkins", jenkinsHandler.Dashboard)
 }
 
 func main() {
@@ -83,19 +89,19 @@ func handleNavigation(request *service.NavigationRequest) (x navigation.Navigati
 		Title:    "ks-devops",
 		Path:     pkg.PluginName + "/overview",
 		IconName: "cloud",
-		Children:  []navigation.Navigation{{
+		Children: []navigation.Navigation{{
 			Title: "Config",
 			Path:  pkg.PluginName + "/config",
 		}, {
 			Title: "Pipeline",
 			Path:  pkg.PluginName + "/overview",
 		}, {
-			Title: "S2I",
-			Path:  pkg.PluginName + "/s2i",
+			Title:    "S2I",
+			Path:     pkg.PluginName + "/s2i",
 			IconName: "s2i",
 		}, {
-			Title: "Jenkins",
-			Path:  pkg.PluginName + "/jenkins",
+			Title:    "Jenkins",
+			Path:     pkg.PluginName + "/jenkins",
 			IconName: "jenkins",
 		}},
 	}, nil
