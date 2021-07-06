@@ -6,7 +6,7 @@ require (
 	github.com/elazarl/goproxy/ext v0.0.0-20210110162100-a92cc753f88e // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/vmware-tanzu/octant v0.19.0
-	k8s.io/api v0.19.3 // indirect
+	k8s.io/api v0.19.3
 	k8s.io/apimachinery v0.20.2
 //kubesphere.io/devops v0.0.0-20190413051334-03b00cc2226d // indirect
 )
